@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Campus Map - SGGS College</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        /* CSS styles here... (omitted for brevity) */
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="title">SGGS College - 3D Campus Map</div>
+    <div id="ui">
+        <div id="search-container">
+            <input type="text" id="search" placeholder="Search for departments, hostels, canteens, sports facilities...">
+            <div id="search-results"></div>
+        </div>
+    </div>
+    <div id="controls">
+        <button class="control-btn" id="reset-view">Reset View</button>
+        <button class="control-btn" id="departments-btn">Departments</button>
+        <button class="control-btn" id="hostels-btn">Hostels</button>
+        <button class="control-btn" id="facilities-btn">Facilities</button>
+    </div>
+    <div id="info-panel">
+        <h3 id="info-title">Location</h3>
+        <p id="info-description"></p>
+        <p id="info-category"></p>
+        <div id="info-image"></div>
+    </div>
+    <div id="loading">
+        <div class="loader"></div>
+        <p>Loading 3D Campus Map...</p>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const locations = [/* location data */];
+            let scene, camera, renderer, controls;
+            let objects = [];
+            function createLabel(text, x, y, z) {
+                 const canvas = document.createElement('canvas');
+                 canvas.width = 256;
+                 canvas.height = 64;
+                 const ctx = canvas.getContext('2d');
+                 ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                 ctx.fillRect(0, 0, 256, 64);
+                 ctx.font = '20px Arial';
+                 ctx.fillStyle = 'white';
+                 ctx.textAlign = 'center';
+                 ctx.fillText(text, 128, 40);
+
+                 const texture = new THREE.CanvasTexture(canvas);
+              const material = new THREE.SpriteMaterial({ map: texture });
+                 const sprite = new THREE.Sprite(material);
+                 sprite.scale.set(60, 10, 1); // Adjust size if needed
+                 sprite.position.set(x, y, z);
+                 return sprite;
+            }
+
+
+            function init() {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x111122);
+
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+                    camera.position.set(0, 2000, 1500);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.screenSpacePanning = false;
+                controls.minDistance = 100;
+                controls.maxDistance = 3000;
+                controls.maxPolarAngle = Math.PI * 0.9;
+
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+
+                const groundGeometry = new THREE.PlaneGeometry(2000, 1000);
+                const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xc8e1c8, roughness: 0.8, metalness: 0.2 });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                scene.add(ground);
+
+                createBuildings();
+                createPaths();
+                // === Custom Building Block ===
+                // const buildingGeometry = new THREE.BoxGeometry(40, 40, 20); // width, height, depth
+                // const buildingMaterial = new THREE.MeshStandardMaterial({ color: 0xff5733 }); // orange color
+                // const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+
+                // // Set position: X, Y (half of height), Z
+                // building.position.set(300, 3, 0); // Adjust as needed
+
+                // // Optional: Add metadata for interactivity
+                // building.userData = {
+                //      name: "Innovation Block",
+                //     description: "A modern facility for student-led projects.",
+                //     category: "Innovation",
+                //  originalColor: 0xff5733
+                //     };
+
+                //     scene.add(building);
+                //     // Add to scene and objects array
+                // objects.push(building);
+
+                // Optional: Add a label above the block
+                // const canvas = document.createElement('canvas');
+                // canvas.width = 256;
+                // canvas.height = 64;
+                // const ctx = canvas.getContext('2d');
+                // ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                // ctx.fillRect(0, 0, 256, 64);
+                // ctx.font = '20px Arial';
+                // ctx.fillStyle = 'white';
+                // ctx.textAlign = 'center';
+                // ctx.fillText("Innovation Block", 128, 40);
+
+                const labelTexture = new THREE.CanvasTexture(canvas);
+                const labelMaterial = new THREE.SpriteMaterial({ map: labelTexture });
+                const label = new THREE.Sprite(labelMaterial);
+                label.scale.set(40, 5, 1);
+                label.position.set(300, 41, 0);
+                scene.add(label);
+
+                
+
+
+                window.addEventListener('resize', onWindowResize);
+                renderer.domElement.addEventListener('click', onClick);
+
+                // Other UI and event functions...
+                animate();
+            }
+            
+
+            function createBuildings() { /* ... */ }
+            function createPaths() { /* ... */ }
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            function onClick(event) { /* ... */ }
+            function createPaths() {
+            // ← Paste here inside this function
+          
+             // Existing road example cooperative-gym road
+              const roadGeometry = new THREE.PlaneGeometry(2000, 40);
+             const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+
+             const verticalRoad = new THREE.Mesh(roadGeometry, roadMaterial);
+            verticalRoad.rotation.x = -Math.PI / 2;
+            verticalRoad.position.set(0,1,-390);
+            scene.add(verticalRoad);
+
+            // 🚧 Diagonal Road Example highway two
+            const diagRoadGeometrytwo = new THREE.PlaneGeometry(1550, 40);  // Length 300, Width 20
+            const diagRoadMaterialtwo = new THREE.MeshStandardMaterial({ color: 0x050505 });
+            const diagRoadtwo = new THREE.Mesh(diagRoadGeometrytwo, diagRoadMaterialtwo);
+
+            // Step 1: Rotate flat on the ground
+            diagRoadtwo.rotation.x = -Math.PI / 2;
+
+            // Step 2: Rotate around Y-axis to make it diagonal
+            diagRoadtwo.rotation.z = Math.PI / 14;  // 45 degrees (π/4 radians), adjust as needed
+
+             // Step 3: Place it in the scene
+            diagRoadtwo.position.set(250, 1, 360); // X, Y, Z
+
+            scene.add(diagRoadtwo);
+
+
+
+
+            // New Road: highwaytwo
+            // const highwaytwo = new THREE.Mesh(
+            //     new THREE.PlaneGeometry(2000, 40), // Length = 300, Width = 20
+            //     new THREE.MeshStandardMaterial({ color:0x333333 }) // dark gray color
+            // );
+            // highwaytwo.rotation.x = -Math.PI / 2; // flat on ground
+            // highwaytwo.position.set(0, 1, 490); // X, Y, Z coordinates (adjust to where you want)
+            // scene.add(highwaytwo);
+
+             // 🚧 Diagonal Road Example highway one
+            const diagRoadGeometryone = new THREE.PlaneGeometry(1350, 40);  // Length 300, Width 20
+            const diagRoadMaterialone = new THREE.MeshStandardMaterial({ color: 0x050505 });
+            const diagRoadone = new THREE.Mesh(diagRoadGeometryone, diagRoadMaterialone);
+
+            // Step 1: Rotate flat on the ground
+            diagRoadone.rotation.x = -Math.PI / 2;
+
+            // Step 2: Rotate around Y-axis to make it diagonal
+            diagRoadone.rotation.z = Math.PI / 14;  // 45 degrees (π/4 radians), adjust as needed
+
+             // Step 3: Place it in the scene
+            diagRoadone.position.set(350, 1, 390); // X, Y, Z
+
+            scene.add(diagRoadone);
+
+
+
+            ////////////////////////////////////////////////////////////////////////////////
+
+            // New Road: highway
+            // const highway = new THREE.Mesh(
+            //     new THREE.PlaneGeometry(2000, 40), // Length = 300, Width = 20
+            //     new THREE.MeshStandardMaterial({ color:0x333333 }) // dark gray color
+            // );
+            // highway.rotation.x = -Math.PI / 2; // flat on ground
+            // highway.position.set(0, 1, 445); // X, Y, Z coordinates (adjust to where you want)
+            // scene.add(highway);
+
+            // New Road: From sahyadri-nandgiri road
+            const sahyadritonandgiri = new THREE.Mesh(
+                new THREE.PlaneGeometry(40, 600), // Length = 300, Width = 20
+                new THREE.MeshStandardMaterial({ color:0x333333 }) // dark gray color
+            );
+            sahyadritonandgiri.rotation.x = -Math.PI / 2; // flat on ground
+            sahyadritonandgiri.position.set(-680, 1, -70); // X, Y, Z coordinates (adjust to where you want)
+            scene.add(sahyadritonandgiri);
+
+            // admin infront road
+            const diagadminroad = new THREE.PlaneGeometry(200, 40);
+            const diagadminmaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const diagadmin = new THREE.Mesh(diagadminroad, diagadminmaterial);
+            diagadmin.rotation.x = -Math.PI / 2;
+            diagadmin.rotation.z = Math.PI / 4;  // 45° rotation
+            diagadmin.position.set(700, 1, -100);
+            scene.add(diagadmin);
+        
+             // admin left road
+             const adminleftroad = new THREE.PlaneGeometry(40, 250);
+             const adminleftroadmaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const adminleft = new THREE.Mesh(adminleftroad, adminleftroadmaterial);
+             adminleft.rotation.x = -Math.PI / 2;
+             adminleft.position.set(450, 1,-280);
+            scene.add(adminleft);
+
+
+            // girls hostel road
+             const newRoadGeometry = new THREE.PlaneGeometry(40, 250);
+             const newRoadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const newRoad = new THREE.Mesh(newRoadGeometry, newRoadMaterial);
+             newRoad.rotation.x = -Math.PI / 2;
+             newRoad.position.set(770, 1,-250);
+            scene.add(newRoad);
+             //
+                // admin lane 1
+             const adminlaneonegeom = new THREE.PlaneGeometry(40, 350);
+             const adminlaneoneMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const adminlaneone = new THREE.Mesh(adminlaneonegeom, adminlaneoneMaterial);
+             adminlaneone.rotation.x = -Math.PI / 2;
+             adminlaneone.position.set(645, 1,100);
+            scene.add(adminlaneone);
+            
+
+
+            // admin lane 2
+             const adminlanetwogeom = new THREE.PlaneGeometry(40, 370);
+             const adminlanetwoMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const adminlanetwo = new THREE.Mesh(adminlanetwogeom, adminlanetwoMaterial);
+             adminlanetwo.rotation.x = -Math.PI / 2;
+             adminlanetwo.position.set(600, 1,105);
+            scene.add(adminlanetwo);
+
+
+            // circular road for pmc
+            const ringGeometry = new THREE.RingGeometry(50, 90, 128);  // inner radius, outer radius, segments
+            const ringMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,         // road color
+                side: THREE.DoubleSide  // render both sides
+            });
+            const circularRoad = new THREE.Mesh(ringGeometry, ringMaterial);
+
+            // Rotate flat on ground
+            circularRoad.rotation.x = -Math.PI / 2;
+
+            // Position in 3D space (adjust X and Z as needed)
+            circularRoad.position.set(450, 1, -100); // X, Y, Z
+            scene.add(circularRoad);
+
+            //pmcright road
+             // admin lane 2
+             const pmcrightroad = new THREE.PlaneGeometry(150, 40);
+             const pmcrightroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const pmcright = new THREE.Mesh(pmcrightroad, pmcrightroadMaterial);
+             pmcright.rotation.x = -Math.PI / 2;
+             pmcright.position.set(580, 1,-60);
+            scene.add(pmcright);
+
+
+
+            // complex left side
+             const complexleftside = new THREE.PlaneGeometry(40, 500);
+             const complexleftsideMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const complexleft = new THREE.Mesh(complexleftside, complexleftsideMaterial);
+             complexleft.rotation.x = -Math.PI / 2;
+             complexleft.position.set(150, 1,-150);
+            scene.add(complexleft);
+
+
+            // 🧱 New Building: CSE Department
+                // const cseGeometry = new THREE.BoxGeometry(60, 60, 30);
+                // const cseMaterial = new THREE.MeshStandardMaterial({ color: 0x3377ff });
+                // const cseBlock = new THREE.Mesh(cseGeometry, cseMaterial);
+                // cseBlock.position.set(500, 31, -100); // Adjusted position
+                // cseBlock.userData = {
+                //     name: "CSE Department",
+                //     description: "Department of Computer Science and Engineering.",
+                //     category: "Department",
+                //     originalColor: 0x3377ff
+                // };
+                // scene.add(cseBlock);
+                // objects.push(cseBlock);
+
+                // const cseLabel = createLabel("CSE Department", 500, 70, -100);
+                // scene.add(cseLabel);
+
+                // animate();
+                // window.addEventListener('resize', onWindowResize);
+
+                // 🧱 New Building: CSE Department
+                // const entcGeometry = new THREE.BoxGeometry(60, 60, 30);
+                // const entcMaterial = new THREE.MeshStandardMaterial({ color: 0x3377ff });
+                // const entcBlock = new THREE.Mesh(entcGeometry, entcMaterial);
+                // entcBlock.position.set(300, 31, -100); // Adjusted position
+                // entcBlock.userData = {
+                //     name: "ENTC Department",
+                //     description: "Department of ENTC.",
+                //     category: "Department",
+                //     originalColor: 0x3377ff
+                // };
+                // scene.add(entcBlock);
+                // objects.push(entcBlock);
+
+                // const entcLabel = createLabel("ENTC Department", 300, 100, -100);
+                // scene.add(entcLabel);
+
+                // animate();
+                // window.addEventListener('resize', onWindowResize);
+
+
+
+                // 🧱 New Building: Admin building 1st
+                const adminoneGeometry = new THREE.BoxGeometry(230, 40, 150); 
+                const adminoneMaterial = new THREE.MeshStandardMaterial({ color: 0x0033cc });
+                const adminoneBlock = new THREE.Mesh(adminoneGeometry, adminoneMaterial);
+                adminoneBlock.position.set(610, 21, -270); // Adjusted position
+                adminoneBlock.userData = {
+                    name: "admin",
+                    description: "Admin building",
+                    category: "Admin",
+                    originalColor: 0x3377ff
+                };
+                scene.add(adminoneBlock);
+                objects.push(adminoneBlock);
+
+                const adminoneLabel = createLabel("admin ground floor", 610, 180, -270);
+                scene.add(adminoneLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                // 🧱 New Building: Admin building 2nd
+                const admintwoGeometry = new THREE.BoxGeometry(230, 40, 150); 
+                const admintwoMaterial = new THREE.MeshStandardMaterial({ color: 0x1a75ff });
+                const admintwoBlock = new THREE.Mesh(admintwoGeometry, admintwoMaterial);
+                admintwoBlock.position.set(610, 70, -270); // Adjusted position
+                admintwoBlock.userData = {
+                    name: "admin",
+                    description: "Admin building",
+                    category: "Admin",
+                    originalColor: 0x3377ff
+                };
+                scene.add(admintwoBlock);
+                objects.push(admintwoBlock);
+
+                const admintwoLabel = createLabel("admin 1st floor", 610, 200, -270);
+                scene.add(admintwoLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                 // 🧱 New Building: Admin building 3rd
+                const adminthreeGeometry = new THREE.BoxGeometry(230, 40, 150); 
+                const adminthreeMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff });
+                const adminthreeBlock = new THREE.Mesh(adminthreeGeometry, adminthreeMaterial);
+                adminthreeBlock.position.set(610, 120, -270); // Adjusted position
+                adminthreeBlock.userData = {
+                    name: "admin",
+                    description: "Admin building",
+                    category: "Admin",
+                    originalColor: 0x3377ff
+                };
+                scene.add(adminthreeBlock);
+                objects.push(adminthreeBlock);
+
+                const adminthreeLabel = createLabel("admin 2nd floor", 610, 220, -270);
+                scene.add(adminthreeLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+                // 🧱 New Building: complex A building
+                const complexaGeometry = new THREE.BoxGeometry(80, 30, 50); 
+                const complexaMaterial = new THREE.MeshStandardMaterial({ color: 0xffbf00 });
+                const complexaBlock = new THREE.Mesh(complexaGeometry, complexaMaterial);
+                complexaBlock.position.set(230, 16, -300); // Adjusted position
+                complexaBlock.userData = {
+                    name: "complexa",
+                    description: "complexa building",
+                    category: "complexa",
+                    originalColor: 0x3377ff
+                };
+                scene.add(complexaBlock);
+                objects.push(complexaBlock);
+
+                const complexaLabel = createLabel("complexa", 230, 40, -300);
+                scene.add(complexaLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                // 🧱 New Building: complex B building
+                const complexbGeometry = new THREE.BoxGeometry(80, 30, 50); 
+                const complexbMaterial = new THREE.MeshStandardMaterial({ color: 0xffbf00 });
+                const complexbBlock = new THREE.Mesh(complexbGeometry, complexbMaterial);
+                complexbBlock.position.set(300, 16, -250); // Adjusted position
+                complexbBlock.userData = {
+                    name: "complexb",
+                    description: "complexb building",
+                    category: "complexb",
+                    originalColor: 0x3377ff
+                };
+                scene.add(complexbBlock);
+                objects.push(complexbBlock);
+
+                const complexbLabel = createLabel("complexb", 300, 40, -250);
+                scene.add(complexbLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                // 🧱 New Building: complex C building
+                const complexcGeometry = new THREE.BoxGeometry(80, 30, 50); 
+                const complexcMaterial = new THREE.MeshStandardMaterial({ color: 0xffbf00 });
+                const complexcBlock = new THREE.Mesh(complexcGeometry, complexcMaterial);
+                complexcBlock.position.set(230, 16, -200); // Adjusted position
+                complexcBlock.userData = {
+                    name: "complexc",
+                    description: "complexc  building",
+                    category: "complexc",
+                    originalColor: 0x3377ff
+                };
+                scene.add(complexcBlock);
+                objects.push(complexcBlock);
+
+                const complexcLabel = createLabel("complexc", 230, 40, -200);
+                scene.add(complexcLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                // 🧱 New Building: complex D building
+                const complexdGeometry = new THREE.BoxGeometry(80, 30, 50); 
+                const complexdMaterial = new THREE.MeshStandardMaterial({ color: 0xffbf00 });
+                const complexdBlock = new THREE.Mesh(complexdGeometry, complexdMaterial);
+                complexdBlock.position.set(300, 16, -150); // Adjusted position
+                complexdBlock.userData = {
+                    name: "complexd",
+                    description: "complexd building",
+                    category: "complexd",
+                    originalColor: 0x3377ff
+                };
+                scene.add(complexdBlock);
+                objects.push(complexdBlock);
+
+                const complexdLabel = createLabel("complexa", 300, 40, -150);
+                scene.add(complexdLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+                // 🌳 Create a tree near PMC
+
+                // Trunk - a brown cylinder
+                const trunkGeometry = new THREE.CylinderGeometry(20, 35, 120, 10); //(radiusTop, radiusBottom, height, radialSegments)
+                const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // brown
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.set(450, 61, -100); // X, Y, Z
+                scene.add(trunk);
+
+                // Leaves - a green sphere
+                const leavesGeometry = new THREE.SphereGeometry(50, 20, 16);//(radius, widthSegments, heightSegments)
+                const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 }); // green
+                const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.position.set(450, 120, -100); // above the trunk
+                scene.add(leaves);
+
+                // Label for PMC Tree
+                const pmcTreeLabel = createLabel("PMC Tree", 450, 180, -100);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(pmcTreeLabel);
+
+
+
+                // 🟩  Green Ground Patch (Lawn or Garden)large
+                const largeGroundGeometry = new THREE.PlaneGeometry(340, 200); // width, height
+                const largeGroundMaterial = new THREE.MeshStandardMaterial({
+                  color: 0x2ecc71, // lush green color
+                  roughness: 0.8,
+                  metalness: 0.1
+                });
+                const largeGround = new THREE.Mesh(largeGroundGeometry, largeGroundMaterial);
+                largeGround.rotation.x = -Math.PI / 2; // Make it lie flat
+                largeGround.position.set(-50, 1, -260); // X, Y, Z - adjust as needed
+                scene.add(largeGround);
+
+
+                // 🟩 Small Green Ground Patch (Lawn or Garden)small
+                const smallGroundGeometry = new THREE.PlaneGeometry(150, 100); // width, height
+                const smallGroundMaterial = new THREE.MeshStandardMaterial({
+                  color: 0x2ecc71, // lush green color
+                  roughness: 0.8,
+                  metalness: 0.1
+                });
+                const smallGround = new THREE.Mesh(smallGroundGeometry, smallGroundMaterial);
+                smallGround.rotation.x = -Math.PI / 2; // Make it lie flat
+                smallGround.position.set(45, 1, -110); // X, Y, Z - adjust as needed
+                scene.add(smallGround);                
+
+
+
+                // // 🟩 cricket ground  Patch 
+                // const cricketGroundGeometry = new THREE.PlaneGeometry(350,  250); // width, height
+                // const cricketGroundMaterial = new THREE.MeshStandardMaterial({
+                //   color: 0x2ecc71, // lush green color
+                //   roughness: 0.8,
+                //   metalness: 0.1
+                // });
+                // const cricketGround = new THREE.Mesh(cricketGroundGeometry, cricketGroundMaterial);
+                // cricketGround.rotation.x = -Math.PI / 2; // Make it lie flat
+                // cricketGround.position.set(-520, 1, 200); // X, Y, Z - adjust as needed
+                // scene.add(cricketGround);     
+
+
+                // // 🟩 Trapezium Green Ground Patch
+                // const trapeziumShape = new THREE.Shape();
+                // trapeziumShape.moveTo(-75, -50);   // Bottom-left
+                // trapeziumShape.lineTo(-400, -90);    // Bottom-right
+                // trapeziumShape.lineTo(-400, 130);     // Top-right (shorter width)
+                // trapeziumShape.lineTo(-880, 130);    // Top-left
+                // trapeziumShape.lineTo(-880, -150);   // bottom-left
+
+                // const trapeziumGeometry = new THREE.ShapeGeometry(trapeziumShape);
+                // const trapeziumMaterial = new THREE.MeshStandardMaterial({
+                //   color: 0x2ecc71, // lush green
+                //   roughness: 0.8,
+                //   metalness: 0.1,
+                //   side: THREE.DoubleSide
+                // });
+
+                // const trapeziumGround = new THREE.Mesh(trapeziumGeometry, trapeziumMaterial);
+                // trapeziumGround.rotation.x = -Math.PI / 2; // lie flat
+                // trapeziumGround.position.set(150, 1, 200); // Adjust X, Y, Z as needed
+                // scene.add(trapeziumGround);
+
+
+
+                  // 🟩 Trapezium Green Ground Patch
+                const trapeziumShape = new THREE.Shape();
+                trapeziumShape.moveTo(-600, -280);   // Bottom-left
+                trapeziumShape.lineTo(-200, -200);    // Bottom-right
+                trapeziumShape.lineTo(-220, 100);     // Top-right (shorter width)
+                trapeziumShape.lineTo(-800, 100 );    // Top-left
+                trapeziumShape.lineTo(-800, -280);   // bottom-left
+
+                const trapeziumGeometry = new THREE.ShapeGeometry(trapeziumShape);
+                const trapeziumMaterial = new THREE.MeshStandardMaterial({
+                  color: 0x2ecc71, // lush green
+                  roughness: 0.8,
+                  metalness: 0.1,
+                  side: THREE.DoubleSide
+                });
+
+                const trapeziumGround = new THREE.Mesh(trapeziumGeometry, trapeziumMaterial);
+                trapeziumGround.rotation.x = -Math.PI / 2; // lie flat
+                trapeziumGround.position.set(150, 1, 200); // Adjust X, Y, Z as needed
+                scene.add(trapeziumGround);
+
+
+
+
+                // 🧱 New Building: entc  department
+                const entcdepartmentGeometry = new THREE.BoxGeometry(180, 70, 80); 
+                const entcdepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x9c6205 });
+                const entcdepart = new THREE.Mesh(entcdepartmentGeometry, entcdepartmentMaterial);
+                entcdepart.position.set(270, 36, 90); // Adjusted position
+                entcdepart.userData = {
+                    name: "entc department",
+                    description: "entc department",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(entcdepart);
+                objects.push(entcdepart);
+
+                // const entcdepartmentLabel = createLabel("entc department ", 280, 150, 70);
+                // scene.add(complexdLabel);
+
+                const entcdepartLabel = createLabel("ENTC  Department ", 280, 90, 70);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(entcdepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+
+                 // 🧱 New Building: instru  department
+                const instrudepartmentGeometry = new THREE.BoxGeometry(150, 30, 100); 
+                const instrudepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0xe80e57 });
+                const instrudepart = new THREE.Mesh(instrudepartmentGeometry, instrudepartmentMaterial);
+                instrudepart.position.set(50, 18, 40); // Adjusted position
+                instrudepart.userData = {
+                    name: "instru department",
+                    description: "instru department",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(instrudepart);
+                objects.push(instrudepart);
+
+                const instrudepartLabel = createLabel("instru  Department ", 60, 90, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(instrudepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+
+                 // 🧱 New Building: electrical  department
+                const electricaldepartmentGeometry = new THREE.BoxGeometry(150, 30, 100); 
+                const electricaldepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0xe80ec7 });
+                const electricaldepart = new THREE.Mesh(electricaldepartmentGeometry, electricaldepartmentMaterial);
+                electricaldepart.position.set(50, 55, 40); // Adjusted position
+                electricaldepart.userData = {
+                    name: "electrical department",
+                    description: "electrical department",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(electricaldepart);
+                objects.push(electricaldepart);
+
+                const electricaldepartLabel = createLabel("electrical  Department ", 60, 110, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(electricaldepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+                // textile lawn left road
+             const textileleftroad = new THREE.PlaneGeometry(40, 240);
+             const textileleftroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const textileleft = new THREE.Mesh(textileleftroad, textileleftroadMaterial);
+             textileleft.rotation.x = -Math.PI / 2;
+             textileleft.position.set(-230, 1.5,-260);
+            scene.add(textileleft);
+
+                  // textile lawn bottom road
+             const textilebottomroad = new THREE.PlaneGeometry(200, 40);
+             const textilebottomroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const textilebottom = new THREE.Mesh(textilebottomroad, textilebottomroadMaterial);
+             textilebottom.rotation.x = -Math.PI / 2;
+             textilebottom.position.set(-140, 1.5,-160);
+            scene.add(textilebottom);
+
+
+
+                  // textile  front left road
+             const textilefrontleftroad = new THREE.PlaneGeometry(40, 130);
+             const textilefrontleftroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const textilefrontleft = new THREE.Mesh(textilefrontleftroad, textilefrontleftroadMaterial);
+             textilefrontleft.rotation.x = -Math.PI / 2;
+             textilefrontleft.position.set(-30, 1.6,-115);
+            scene.add(textilefrontleft);
+
+
+
+            //      // textile front road
+            //  const textilefrontroad = new THREE.PlaneGeometry(150, 40);
+            //  const textilefrontroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            //  const textilefront = new THREE.Mesh(textilefrontroad, textilefrontroadMaterial);
+            //  textilebottom.rotation.x = -Math.PI / 2;
+            //  textilefront.position.set(20, 1, 80);
+            //  scene.add(textilefront);
+
+
+
+                 // textile  front left road
+             const textilefrontroad = new THREE.PlaneGeometry(180, 40);
+             const textilefrontroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const textilefront = new THREE.Mesh(textilefrontroad, textilefrontroadMaterial);
+             textilefront.rotation.x = -Math.PI / 2;
+             textilefront.position.set(40, 1.3, -30);
+            scene.add(textilefront);
+
+
+
+
+                  // 🧱 New Building: textile  department
+                const textiledepartmentGeometry = new THREE.BoxGeometry(220, 30, 100); 
+                const textiledepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0xfcc203 });
+                const textiledepart = new THREE.Mesh(textiledepartmentGeometry, textiledepartmentMaterial);
+                textiledepart.position.set(-170, 16, -80); // Adjusted position
+                textiledepart.userData = {
+                    name: "textile department",
+                    description: "textile department",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(textiledepart);
+                objects.push(textiledepart);
+
+                const textiledepartLabel = createLabel("textile  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(textiledepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+                // New Road: nala road
+            const nalaroad = new THREE.Mesh(
+                new THREE.PlaneGeometry(660, 40), // Length = 300, Width = 20
+                new THREE.MeshStandardMaterial({ color:0x333333 }) // dark gray color
+            );
+            nalaroad.rotation.x = -Math.PI / 2; // flat on ground
+            nalaroad.position.set(-350, 0.5, 70); // X, Y, Z coordinates (adjust to where you want)
+            scene.add(nalaroad);
+
+
+            //  // New Road: nala one road
+            // const nalaoneroad = new THREE.Mesh(
+            //     new THREE.PlaneGeometry(40, 100), // Length = 300, Width = 20
+            //     new THREE.MeshStandardMaterial({ color:0x333333 }) // dark gray color
+            // );
+            // nalaoneroad.rotation.x = -Math.PI / 2; // flat on ground
+            // nalaoneoad.position.set(-30, 500, 30); // X, Y, Z coordinates (adjust to where you want)
+            // scene.add(nalaoneroad);
+
+                // textile front right road
+                const textilefrontrightroad = new THREE.PlaneGeometry(40, 180);
+             const textilefrontrightroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const textilefrontright = new THREE.Mesh(textilefrontrightroad, textilefrontrightroadMaterial);
+             textilefrontright.rotation.x = -Math.PI / 2;
+             textilefrontright.position.set(-40, 1, 40);
+            scene.add(textilefrontright);
+
+
+               // intru right road
+                  const instrurightroad = new THREE.PlaneGeometry(230, 40);
+             const instrurightroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const instruright = new THREE.Mesh(instrurightroad, instrurightroadMaterial);
+             instruright.rotation.x = -Math.PI / 2;
+             instruright.position.set(55, 1, 120);
+            scene.add(instruright);
+
+
+
+                // civil department
+
+                 const civildepartmentGeometry = new THREE.BoxGeometry(220, 30, 100); 
+                const civildepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0xfcf403 });
+                const civildepart = new THREE.Mesh(civildepartmentGeometry, civildepartmentMaterial);
+                civildepart.position.set(-170, 55, -80); // Adjusted position
+                civildepart.userData = {
+                    name: "civil department",
+                    description: "civil department",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(civildepart);
+                objects.push(civildepart);
+
+                const civildepartLabel = createLabel("civil  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(civildepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+                 // mech chem department one 
+
+                 const mechchemdepartmentGeometry = new THREE.BoxGeometry(350, 70, 70); 
+                const mechchemdepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x7f03fc });
+                const mechchemdepart = new THREE.Mesh(mechchemdepartmentGeometry, mechchemdepartmentMaterial);
+                mechchemdepart.position.set(-480, 36, 30); // Adjusted position
+                mechchemdepart.userData = {
+                    name: "mechchem department",
+                    description: "mechchem department",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(mechchemdepart);
+                objects.push(mechchemdepart);
+
+                const mechchemdepartLabel = createLabel("mechchem  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(mechchemdepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                 // mech chem department two
+
+                 const twomechchemdepartmentGeometry = new THREE.BoxGeometry(350, 70, 70); 
+                const twomechchemdepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x7f03fc });
+                const twomechchemdepart = new THREE.Mesh(twomechchemdepartmentGeometry, twomechchemdepartmentMaterial);
+                twomechchemdepart.position.set(-480, 36, -120); // Adjusted position
+                twomechchemdepart.userData = {
+                    name: "twomechchem department",
+                    description: "twomechchem department",
+                    category: "twodepartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(twomechchemdepart);
+                objects.push(twomechchemdepart);
+
+                const twomechchemdepartLabel = createLabel("twomechchem  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(twomechchemdepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+                 // mech chem department common
+
+                 const commonmechchemdepartmentGeometry = new THREE.BoxGeometry(120, 30, 120); 
+                const commonmechchemdepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x7f03fc });
+                const commonmechchemdepart = new THREE.Mesh(commonmechchemdepartmentGeometry, commonmechchemdepartmentMaterial);
+                commonmechchemdepart.position.set(-365, 56, -40); // Adjusted position
+                commonmechchemdepart.userData = {
+                    name: "commonmechchem department",
+                    description: "commonmechchem department",
+                    category: "commondepartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(commonmechchemdepart);
+                objects.push(commonmechchemdepart);
+
+                const commonmechchemdepartLabel = createLabel("commonmechchem  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(commonmechchemdepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+                /////////////////////////////////////////////////////////////////////////////////
+
+
+
+                // it department one 
+
+                 const itonedepartmentGeometry = new THREE.BoxGeometry(350, 30, 70); 
+                const itonedepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x0f03fc });
+                const itonedepart = new THREE.Mesh(itonedepartmentGeometry, itonedepartmentMaterial);
+                itonedepart.position.set(-480, 100, 30); // Adjusted position
+                itonedepart.userData = {
+                    name: "itone department",
+                    description: "itone depaitment",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(itonedepart);
+                objects.push(itonedepart);
+
+                const itonedepartLabel = createLabel("itone  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(itonedepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                 // it department two
+
+                 const twoitdepartmentGeometry = new THREE.BoxGeometry(350, 30, 70); 
+                const twoitdepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x0f03fc });
+                const twoitdepart = new THREE.Mesh(twoitdepartmentGeometry, twoitdepartmentMaterial);
+                twoitdepart.position.set(-480, 100, -120); // Adjusted position
+                twoitdepart.userData = {
+                    name: "twoit department",
+                    description: "twoit department",
+                    category: "twodepartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(twoitdepart);
+                objects.push(twoitdepart);
+
+                const twoitdepartLabel = createLabel("twoit  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(twoitdepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+                 // it department common
+
+                 const commonitdepartmentGeometry = new THREE.BoxGeometry(120, 30, 120); 
+                const commonitdepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x0f03fc });
+                const commonitdepart = new THREE.Mesh(commonitdepartmentGeometry, commonitdepartmentMaterial);
+                commonitdepart.position.set(-365, 100, -40); // Adjusted position
+                commonitdepart.userData = {
+                    name: "commonit department",
+                    description: "commonit department",
+                    category: "commondepartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(commonitdepart);
+                objects.push(commonitdepart);
+
+                const commonitdepartLabel = createLabel("commonit  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(commonitdepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+
+
+
+
+
+
+
+                /////////////////////////////////////////////////////////////////////////////////
+
+
+
+                // cse department one 
+
+                 const cseonedepartmentGeometry = new THREE.BoxGeometry(350, 30, 70); 
+                const cseonedepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x03d3fc });
+                const cseonedepart = new THREE.Mesh(cseonedepartmentGeometry, cseonedepartmentMaterial);
+                cseonedepart.position.set(-480, 140, 30); // Adjusted position
+                cseonedepart.userData = {
+                    name: "cseone department",
+                    description: "cseone depaitment",
+                    category: "department",
+                    originalColor: 0x3377ff
+                };
+                scene.add(cseonedepart);
+                objects.push(cseonedepart);
+
+                const cseonedepartLabel = createLabel("cseone  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(cseonedepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+                 // cse department two
+
+                 const twocsedepartmentGeometry = new THREE.BoxGeometry(350, 30, 70); 
+                const twocsedepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x03d3fc });
+                const twocsedepart = new THREE.Mesh(twocsedepartmentGeometry, twocsedepartmentMaterial);
+                twocsedepart.position.set(-480, 140, -120); // Adjusted position
+                twocsedepart.userData = {
+                    name: "twocse department",
+                    description: "twocse department",
+                    category: "twocsepartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(twocsedepart);
+                objects.push(twocsedepart);
+
+                const twocsedepartLabel = createLabel("twocse  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(twocsedepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+                 // cse department common
+
+                 const commoncsedepartmentGeometry = new THREE.BoxGeometry(120, 30, 120); 
+                const commoncsedepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0x03d3fc });
+                const commoncsedepart = new THREE.Mesh(commoncsedepartmentGeometry, commoncsedepartmentMaterial);
+                commoncsedepart.position.set(-365, 140, -40); // Adjusted position
+                commoncsedepart.userData = {
+                    name: "commoncse department",
+                    description: "commoncse department",
+                    category: "commondepartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(commoncsedepart);
+                objects.push(commoncsedepart);
+
+                const commoncsedepartLabel = createLabel("commoncse  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(commoncsedepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+
+
+
+                ///////////////////////////////////////////////////////////////////
+
+
+                 // production department
+
+                 const productiondepartmentGeometry = new THREE.BoxGeometry(350, 70, 120); 
+                const productiondepartmentMaterial = new THREE.MeshStandardMaterial({ color: 0xa19381 });
+                const productiondepart = new THREE.Mesh(productiondepartmentGeometry, productiondepartmentMaterial);
+                productiondepart.position.set(-430, 36,-230); // Adjusted position
+                productiondepart.userData = {
+                    name: "production department",
+                    description: "production department",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(productiondepart);
+                objects.push(productiondepart);
+
+                const productiondepartLabel = createLabel("production  Department ", -60, 110, -50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(productiondepartLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+
+                //////////////////////////////////////
+
+
+                // 🟩 Small Green Ground Patch (PRODUCTION)one
+                const prodoneGroundGeometry = new THREE.PlaneGeometry(350, 150); // width, height
+                const prodoneGroundMaterial = new THREE.MeshStandardMaterial({
+                  color: 0x2ecc71, // lush green color
+                  roughness: 0.8,
+                  metalness: 0.1
+                });
+                const prodoneGround = new THREE.Mesh(prodoneGroundGeometry, prodoneGroundMaterial);
+                prodoneGround.rotation.x = -Math.PI / 2; // Make it lie flat
+                prodoneGround.position.set(-430, 1, -295); // X, Y, Z - adjust as needed
+                scene.add(prodoneGround);              
+
+
+
+                // production front  road
+                const prodfrontroad = new THREE.PlaneGeometry(40, 120);
+             const prodfrontroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const prodfront = new THREE.Mesh(prodfrontroad, prodfrontroadMaterial);
+             prodfront.rotation.x = -Math.PI / 2;
+             prodfront.position.set(-430, 1.9, -350);
+            scene.add(prodfront);
+
+
+                
+
+
+
+                 // 🟩 director lawn
+                const directorlawnGeometry = new THREE.PlaneGeometry(150, 180); // width, height
+                const directorlawnMaterial = new THREE.MeshStandardMaterial({
+                  color: 0x2ecc71, // lush green color
+                  roughness: 0.8,
+                  metalness: 0.1
+                });
+                const directorlawn = new THREE.Mesh(directorlawnGeometry, directorlawnMaterial);
+                directorlawn.rotation.x = -Math.PI / 2; // Make it lie flat
+                directorlawn.position.set(750, 1, 65); // X, Y, Z - adjust as needed
+                scene.add(directorlawn);      
+
+
+
+                /////////////////////////
+
+                 // director house
+
+                 const directorhouseGeometry = new THREE.BoxGeometry(80, 50, 60); 
+                const directorhouseMaterial = new THREE.MeshStandardMaterial({ color: 0xa19381 });
+                const directorhome = new THREE.Mesh(directorhouseGeometry, directorhouseMaterial);
+                directorhome.position.set(760, 26,-70); // Adjusted position
+                directorhome.userData = {
+                    name: "production department",
+                    description: "production department",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(directorhome);
+                objects.push(directorhome);
+
+                const directorhomeLabel = createLabel("production  Department ", 750, 1, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(directorhomeLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+                ///////////////////////////////
+
+                // deogiri hostel
+
+                 const deogirihostelGeometry = new THREE.BoxGeometry(120, 80, 100); 
+                const deogirihostelMaterial = new THREE.MeshStandardMaterial({ color: 0xfc6203 });
+                const deogiri = new THREE.Mesh(deogirihostelGeometry, deogirihostelMaterial);
+                deogiri.position.set(-770, 41,-320); // Adjusted position
+                deogiri.userData = {
+                    name: "production department",
+                    description: "production department",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(deogiri);
+                objects.push(deogiri);
+
+                const deogiriLabel = createLabel("production  Department ", 750, 1, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(deogiriLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+/////////////////////////////////////////
+                   // nandgiri  front  road
+                const nandgirifrontroad = new THREE.PlaneGeometry(120, 40);
+             const nandgirifrontroadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+             const nandgirifront = new THREE.Mesh(nandgirifrontroad, nandgirifrontroadMaterial);
+             nandgirifront.rotation.x = -Math.PI / 2;
+             nandgirifront.position.set(-730, 1, -100);
+            scene.add(nandgirifront);
+
+
+
+                 // NANDGIIRI  hostel one
+
+                 const nandgirihostelGeometry = new THREE.BoxGeometry(40, 60, 60); 
+                const nandgirihostelMaterial = new THREE.MeshStandardMaterial({ color: 0xfcdb03 });
+                const nandgiri = new THREE.Mesh(nandgirihostelGeometry, nandgirihostelMaterial);
+                nandgiri.position.set(-780, 31,-40); // Adjusted position
+                nandgiri.userData = {
+                    name: "production department",
+                    description: "production department",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(nandgiri);
+                objects.push(nandgiri);
+
+                const nandgiriLabel = createLabel("production  Department ", 750, 1, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(nandgiriLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+                // NANDGIIRI  hostel two
+
+                 const nandgiritwohostelGeometry = new THREE.BoxGeometry(40, 60, 60); 
+                const nandgiritwohostelMaterial = new THREE.MeshStandardMaterial({ color: 0xfcdb03 });
+                const nandgiritwo = new THREE.Mesh(nandgiritwohostelGeometry, nandgiritwohostelMaterial);
+                nandgiritwo.position.set(-880, 31,-40); // Adjusted position
+                nandgiritwo.userData = {
+                    name: "production department",
+                    description: "production department",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(nandgiritwo);
+                objects.push(nandgiritwo);
+
+                const nandgiritwoLabel = createLabel("production  Department ", 750, 1, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(nandgiritwoLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+
+                 // NANDGIIRI  hostel three
+
+                 const nandgirithreehostelGeometry = new THREE.BoxGeometry(60, 60, 40); 
+                const nandgirithreehostelMaterial = new THREE.MeshStandardMaterial({ color: 0xfcdb03 });
+                const nandgirithree = new THREE.Mesh(nandgirithreehostelGeometry, nandgirithreehostelMaterial);
+                nandgirithree.position.set(-830, 31,10); // Adjusted position
+                nandgirithree.userData = {
+                    name: "production department",
+                    description: "production department",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(nandgirithree);
+                objects.push(nandgirithree);
+
+                const nandgirithreeLabel = createLabel("production  Department ", 750, 1, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(nandgirithreeLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+                 // NANDGIIRI  hostel four
+
+                 const nandgirifourhostelGeometry = new THREE.BoxGeometry(60, 60, 40); 
+                const nandgirifourhostelMaterial = new THREE.MeshStandardMaterial({ color: 0xfcdb03 });
+                const nandgirifour = new THREE.Mesh(nandgirifourhostelGeometry, nandgirifourhostelMaterial);
+                nandgirifour.position.set(-830, 31,-90); // Adjusted position
+                nandgirifour.userData = {
+                    name: "production department",
+                    description: "production department",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(nandgirifour);
+                objects.push(nandgirifour);
+
+                const nandgirifourLabel = createLabel("production  Department ", 750, 1, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(nandgirifourLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+
+                // sahyadri hostel
+
+                 const sahyadrihostelGeometry = new THREE.BoxGeometry(180, 140, 120); 
+                const sahyadrihostelMaterial = new THREE.MeshStandardMaterial({ color: 0xe3d1a8 });
+                const sahyadri = new THREE.Mesh(sahyadrihostelGeometry, sahyadrihostelMaterial);
+                sahyadri.position.set(-810, 71, 200); // Adjusted position
+                sahyadri.userData = {
+                    name: "production department",
+                    description: "production sahyadri",
+                    category: "productionpartment",
+                    originalColor: 0x3377ff
+                };
+                scene.add(sahyadri);
+                objects.push(sahyadri);
+
+                const sahyadriLabel = createLabel("production  Department ", 750, 1, 50);  // X, Y, Z same as leaves, adjust Y to float above
+                scene.add(sahyadriLabel);
+
+                animate();
+                window.addEventListener('resize', onWindowResize);
+
+
+      ////////////////////////////////////////////////////////////////////////////////////////
+      // clickable 
+      ////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+                // ← Paste here to add your custom road
+            }
+
+            
+
+
+            init();
+        });
+
+
+        
+    </script>
+</body>
+</html>
